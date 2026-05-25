@@ -11,6 +11,10 @@
 # TypeScript build cache
 **/*.tsbuildinfo
 
+# Pencil design tool working files (large, transient state)
+*.pen
+pencil-*.pen
+
 # Editor / OS
 .DS_Store
 .vscode
