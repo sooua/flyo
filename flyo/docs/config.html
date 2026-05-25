@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="light dark" />
+  <title>Configuration — Flyo</title>
+  <meta name="description" content="webd.conf-compatible configuration reference. Permission tags, listen addresses, users." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Cal+Sans&family=Inter:wght@400;500;600&display=swap" />
+  <link rel="stylesheet" href="docs.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='4' y='3' width='16' height='4' rx='1.5' fill='%23242424' fill-opacity='0.35'/%3E%3Crect x='2' y='8' width='20' height='5' rx='2' fill='%23242424' fill-opacity='0.6'/%3E%3Crect x='0' y='14' width='24' height='9' rx='2.5' fill='%23242424'/%3E%3C/svg%3E" />
+</head>
+<body>
+
+<nav class="nav">
+  <div class="container nav-inner">
+    <a class="brand silent" href="./">
+      <span class="brand-logo">F</span><span>Flyo</span>
+    </a>
+    <div class="nav-links">
+      <a class="nav-link" href="install.html">Install</a>
+      <a class="nav-link active" href="config.html">Config</a>
+      <a class="nav-link" href="api.html">API</a>
+      <a class="nav-link" href="https://github.com/webd90kb/webd" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container doc-shell">
+  <aside class="doc-side">
+    <h5>Configuration</h5>
+    <a href="#lookup">Config lookup order</a>
+    <a href="#directives">Directives</a>
+    <a href="#perms">Permission tags</a>
+    <a href="#examples">Examples</a>
+    <a href="#cli">CLI override</a>
+    <a href="#env">Environment</a>
+  </aside>
+
+  <main class="doc-body">
+    <h1>Configuration</h1>
+    <p>Flyo reads a plain-text config file. The format is intentionally <strong>identical to the original webd.conf</strong> — drop your existing config in and it works.</p>
+
+    <h2 id="lookup">Config lookup order</h2>
+    <p>On startup, Flyo tries these paths in order. The first one that exists is loaded.</p>
+    <ol>
+      <li><code>./flyo.conf</code></li>
+      <li><code>./webd.conf</code></li>
+      <li><code>/etc/flyo.conf</code></li>
+      <li><code>/etc/webd.conf</code></li>
+    </ol>
+    <p>If none exist, Flyo serves the current working directory on <code>0.0.0.0:9212</code> with the default guest-read policy.</p>
+
+    <h2 id="directives">Directives</h2>
+    <p>Directives are case-insensitive. Quoted strings let you use paths with spaces. Lines starting with <code>#</code> are comments.</p>
+
+    <table>
+      <thead>
+        <tr><th>Directive</th><th>Arguments</th><th>Purpose</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>Webd.Root</code></td>
+          <td><code>&lt;path&gt;</code></td>
+          <td>The folder you want to share. Quote it if it contains spaces.</td>
+        </tr>
+        <tr>
+          <td><code>Webd.Listen</code></td>
+          <td><code>&lt;port&gt;</code> or <code>&lt;addr:port&gt;</code></td>
+          <td>Where to listen. Repeatable. <code>9212</code> → all interfaces. <code>[::]:9212</code> → dual-stack.</td>
+        </tr>
+        <tr>
+          <td><code>Webd.User</code></td>
+          <td><code>&lt;tag&gt; &lt;name&gt; &lt;pass&gt;</code></td>
+          <td>Add a user with a permission tag. Max 3 users.</td>
+        </tr>
+        <tr>
+          <td><code>Webd.Guest</code></td>
+          <td><code>&lt;tag&gt;</code> or <code>0</code></td>
+          <td>Permissions for anonymous visitors. <code>0</code> disables guest entirely.</td>
+        </tr>
+        <tr>
+          <td><code>Webd.Hide</code></td>
+          <td>—</td>
+          <td>Windows: don't show the tray icon.</td>
+        </tr>
+        <tr>
+          <td><code>Webd.Browser</code></td>
+          <td><code>"&lt;path&gt;"</code></td>
+          <td>Windows: which browser to launch on tray double-click.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2 id="perms">Permission tags</h2>
+    <p>Each user (and the guest) gets a string of tag characters. Each tag is independent — combine freely.</p>
+
+    <table>
+      <thead><tr><th>Tag</th><th>Meaning</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>r</code></td><td>Access (download) files</td><td>Required to view file contents.</td></tr>
+        <tr><td><code>l</code></td><td>List directories</td><td>Without this, the folder appears empty.</td></tr>
+        <tr><td><code>u</code></td><td>Upload + create folder</td><td>Drag-drop, paste, mkdir.</td></tr>
+        <tr><td><code>m</code></td><td>Delete / move / rename</td><td>Deletes go to <code>.Trash/</code>, not real removal.</td></tr>
+        <tr><td><code>S</code></td><td>Show hidden files</td><td>Dot-prefixed entries become visible.</td></tr>
+        <tr><td><code>T</code></td><td>Use media player page</td><td>Activates the <code>/.player.htm</code> viewer for video/audio.</td></tr>
+        <tr><td><code>D</code></td><td>Force download</td><td>Adds <code>Content-Disposition: attachment</code> instead of inline display.</td></tr>
+      </tbody>
+    </table>
+
+    <p>Use <code>0</code> as the tag to mean "no permissions" — only useful for <code>Webd.Guest 0</code> to disable anonymous access.</p>
+
+    <h2 id="examples">Examples</h2>
+
+    <h3>Home NAS — me writes, family reads</h3>
+    <pre>Webd.Root   /mnt/data/share
+Webd.Listen [::]:9212
+
+# I get everything
+Webd.User   rlumST admin    correct-horse-battery-staple
+
+# Family gets read + streaming
+Webd.User   rlT    family   shared-passphrase
+
+# Strangers see nothing
+Webd.Guest  0</pre>
+
+    <h3>Public drop box — anyone can upload, no one can list</h3>
+    <pre>Webd.Root   /mnt/dropbox
+Webd.Listen 9212
+
+# Upload-only guest — they can drop files but can't see what's inside
+Webd.Guest  u
+
+# I can clean it out
+Webd.User   rlum admin secret</pre>
+
+    <h3>Router / OpenWrt — strict read-only mirror</h3>
+    <pre>Webd.Root   /mnt/sda1/public
+Webd.Listen 9212
+
+Webd.Guest  rl
+# no users → no writes ever possible</pre>
+
+    <h2 id="cli">CLI override</h2>
+    <p>Every directive has a short flag for quick ad-hoc serving.</p>
+    <table>
+      <thead><tr><th>Flag</th><th>Equivalent</th></tr></thead>
+      <tbody>
+        <tr><td><code>-w &lt;path&gt;</code></td>      <td><code>Webd.Root</code></td></tr>
+        <tr><td><code>-l &lt;addr:port&gt;</code></td><td><code>Webd.Listen</code></td></tr>
+        <tr><td><code>-u tag:user:pass</code></td>    <td><code>Webd.User</code></td></tr>
+        <tr><td><code>-g tag</code></td>              <td><code>Webd.Guest</code></td></tr>
+        <tr><td><code>-c &lt;path&gt;</code></td>     <td>Use a specific config file</td></tr>
+      </tbody>
+    </table>
+
+    <pre># One-line server, no config file needed
+flyo -w /tmp/incoming -u rlumS:admin:secret -g 0</pre>
+
+    <h2 id="env">Environment variables</h2>
+    <p>For OS-level concerns that don't belong in the config file.</p>
+    <table>
+      <thead><tr><th>Variable</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td><code>RUST_LOG</code></td>  <td>Log level. <code>info</code> (default), <code>debug</code>, <code>warn</code>, etc.</td></tr>
+        <tr><td><code>_LOG_DIR</code></td>  <td>Prefix for daily rotated log files (Linux).</td></tr>
+        <tr><td><code>_RUNAS</code></td>    <td>Drop privileges to this user after binding the port (Linux).</td></tr>
+        <tr><td><code>_CHROOT_PATH</code></td><td>chroot into this directory after startup (Linux).</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Next: the HTTP API</h2>
+    <p>If you want to script uploads or build a different UI, see the <a href="api.html">API reference</a>.</p>
+  </main>
+</div>
+
+<footer class="footer">
+  <div class="container footer-row">
+    <span>© 2026 Flyo · MIT licensed</span>
+    <span>Successor to <a href="https://webd.cf/webd/" target="_blank" rel="noopener">webd</a></span>
+    <span class="spacer"></span>
+    <a href="https://github.com/webd90kb/webd" target="_blank" rel="noopener">GitHub</a>
+    <a href="install.html">Install</a>
+    <a href="api.html">API</a>
+  </div>
+</footer>
+
+</body>
+</html>

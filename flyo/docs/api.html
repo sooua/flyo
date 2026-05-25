@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="light dark" />
+  <title>HTTP API — Flyo</title>
+  <meta name="description" content="Flyo HTTP API reference. Cookie session auth, list / file / upload / mkdir / rename / delete endpoints." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Cal+Sans&family=Inter:wght@400;500;600&display=swap" />
+  <link rel="stylesheet" href="docs.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='4' y='3' width='16' height='4' rx='1.5' fill='%23242424' fill-opacity='0.35'/%3E%3Crect x='2' y='8' width='20' height='5' rx='2' fill='%23242424' fill-opacity='0.6'/%3E%3Crect x='0' y='14' width='24' height='9' rx='2.5' fill='%23242424'/%3E%3C/svg%3E" />
+</head>
+<body>
+
+<nav class="nav">
+  <div class="container nav-inner">
+    <a class="brand silent" href="./">
+      <span class="brand-logo">F</span><span>Flyo</span>
+    </a>
+    <div class="nav-links">
+      <a class="nav-link" href="install.html">Install</a>
+      <a class="nav-link" href="config.html">Config</a>
+      <a class="nav-link active" href="api.html">API</a>
+      <a class="nav-link" href="https://github.com/webd90kb/webd" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container doc-shell">
+  <aside class="doc-side">
+    <h5>API reference</h5>
+    <a href="#auth">Authentication</a>
+    <a href="#list">List directory</a>
+    <a href="#file">Download (Range)</a>
+    <a href="#upload">Upload</a>
+    <a href="#mkdir">Create folder</a>
+    <a href="#rename">Rename / move</a>
+    <a href="#delete">Delete</a>
+    <a href="#errors">Error codes</a>
+  </aside>
+
+  <main class="doc-body">
+    <h1>HTTP API</h1>
+    <p>A small JSON-over-HTTP surface that the built-in UI uses. Everything is cookie-session authenticated; permission tags decide what you can call.</p>
+
+    <h2 id="auth">Authentication</h2>
+    <p>Three endpoints govern the session. The session cookie is <code>flyo_sid</code> — HttpOnly, SameSite=Lax.</p>
+
+    <h3>POST <code>/api/login</code></h3>
+    <p>JSON body <code>{"user", "pass"}</code>. On success, sets the cookie and returns the resolved identity.</p>
+    <pre>curl -i -c jar -X POST http://localhost:9212/api/login \
+  -H 'Content-Type: application/json' \
+  -d '{"user":"admin","pass":"secret"}'
+
+# → HTTP/1.1 200 OK
+# Set-Cookie: flyo_sid=abc...; Path=/; HttpOnly; SameSite=Lax
+# {"authenticated":true,"user":"admin","perms":{"access":true,"list":true,...}}</pre>
+
+    <h3>POST <code>/api/logout</code></h3>
+    <p>Invalidates every session for the cookie holder's user and clears the cookie.</p>
+
+    <h3>GET <code>/api/whoami</code></h3>
+    <p>Returns the current identity. Useful for the UI to decide what to render at load time.</p>
+    <pre>curl -b jar http://localhost:9212/api/whoami
+{"authenticated":true,"user":"admin","perms":{...}}</pre>
+
+    <h2 id="list">List directory</h2>
+    <p><strong>GET</strong> <code>/api/list?path=/sub/dir</code> — requires <code>l</code>.</p>
+    <pre>curl -b jar 'http://localhost:9212/api/list?path=/Photos/2026'
+
+{
+  "path": "/Photos/2026",
+  "entries": [
+    {"name":"Spring trip","is_dir":true,"size":0,"mtime":1741782120},
+    {"name":"camera-roll.zip","is_dir":false,"size":268435456,"mtime":1740336000}
+  ]
+}</pre>
+    <p>Hidden (dot-prefixed) entries appear only if the caller has the <code>S</code> tag. The recycle bin <code>.Trash/</code> is <em>never</em> listed.</p>
+
+    <h2 id="file">Download with Range support</h2>
+    <p><strong>GET</strong> <code>/api/file?path=/clip.mp4</code> — requires <code>r</code>.</p>
+    <ul>
+      <li>Supports <code>Range: bytes=START-END</code>, <code>bytes=START-</code>, and suffix <code>bytes=-N</code>.</li>
+      <li>Returns <code>206 Partial Content</code> with <code>Content-Range</code> when a range is requested.</li>
+      <li>If the user has the <code>D</code> tag, the response includes <code>Content-Disposition: attachment</code>.</li>
+    </ul>
+    <pre># Stream the first 1 MB
+curl -b jar -H 'Range: bytes=0-1048575' \
+  'http://localhost:9212/api/file?path=/clip.mp4' -o head.bin
+
+# Resume an interrupted download
+curl -b jar -C - 'http://localhost:9212/api/file?path=/big.iso' -o big.iso</pre>
+
+    <h2 id="upload">Upload</h2>
+    <p><strong>POST</strong> <code>/api/upload?path=/dest/name.ext</code> — requires <code>u</code>.</p>
+    <p>The request body <em>is</em> the file. Flyo writes to a temp sibling and atomically renames once the stream completes — clients never see a half-uploaded file in listings.</p>
+    <pre># Upload a single file
+curl -b jar --data-binary @local.zip \
+  'http://localhost:9212/api/upload?path=/backups/local.zip'
+
+# → 200 {"path":"/backups/local.zip","bytes":12345678}</pre>
+
+    <h2 id="mkdir">Create folder</h2>
+    <p><strong>POST</strong> <code>/api/mkdir?path=/new/nested/folder</code> — requires <code>u</code>. Intermediate folders are created automatically. Returns <code>409 Conflict</code> if the path already exists.</p>
+
+    <h2 id="rename">Rename / move</h2>
+    <p><strong>POST</strong> <code>/api/rename?from=/a&amp;to=/b/c</code> — requires <code>m</code>. Works for files and folders. Intermediate folders in the destination path are created if needed.</p>
+
+    <h2 id="delete">Delete</h2>
+    <p><strong>POST</strong> <code>/api/delete?path=/foo</code> — requires <code>m</code>.</p>
+    <p>This does <em>not</em> remove files from disk — it moves them into <code>&lt;Root&gt;/.Trash/</code> with a timestamp prefix:</p>
+    <pre>/share/foo.txt    →    /share/.Trash/.65a9d2c.foo.txt</pre>
+    <p>The recycle bin is intentionally never exposed via the listing API; restore through the file system.</p>
+
+    <h2 id="errors">Error codes</h2>
+    <table>
+      <thead><tr><th>Status</th><th>When</th></tr></thead>
+      <tbody>
+        <tr><td><code>400</code></td> <td>Path tried to escape the share root (<code>..</code>, drive prefix, etc.) or query parameters were malformed.</td></tr>
+        <tr><td><code>401</code></td> <td>Login attempt failed.</td></tr>
+        <tr><td><code>403</code></td> <td>Authenticated but missing the permission tag for this endpoint.</td></tr>
+        <tr><td><code>404</code></td> <td>Path does not exist on disk.</td></tr>
+        <tr><td><code>409</code></td> <td>Destination already exists (mkdir / rename).</td></tr>
+        <tr><td><code>416</code></td> <td>Range request was unsatisfiable.</td></tr>
+        <tr><td><code>500</code></td> <td>Underlying I/O error. Server log will have details.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Debug endpoints</h2>
+    <table>
+      <thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td>GET</td><td><code>/__health</code></td><td>Liveness probe — returns <code>200 ok</code>.</td></tr>
+        <tr><td>GET</td><td><code>/__config</code></td><td>Current effective config as JSON. Useful for sanity checks.</td></tr>
+      </tbody>
+    </table>
+  </main>
+</div>
+
+<footer class="footer">
+  <div class="container footer-row">
+    <span>© 2026 Flyo · MIT licensed</span>
+    <span>Successor to <a href="https://webd.cf/webd/" target="_blank" rel="noopener">webd</a></span>
+    <span class="spacer"></span>
+    <a href="https://github.com/webd90kb/webd" target="_blank" rel="noopener">GitHub</a>
+    <a href="install.html">Install</a>
+    <a href="config.html">Config</a>
+  </div>
+</footer>
+
+</body>
+</html>

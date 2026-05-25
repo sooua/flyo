@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="light dark" />
+  <title>Install — Flyo</title>
+  <meta name="description" content="Install Flyo on Windows, Linux, macOS, OpenWrt, Armbian, or Android. Single binary, no dependencies." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Cal+Sans&family=Inter:wght@400;500;600&display=swap" />
+  <link rel="stylesheet" href="docs.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='4' y='3' width='16' height='4' rx='1.5' fill='%23242424' fill-opacity='0.35'/%3E%3Crect x='2' y='8' width='20' height='5' rx='2' fill='%23242424' fill-opacity='0.6'/%3E%3Crect x='0' y='14' width='24' height='9' rx='2.5' fill='%23242424'/%3E%3C/svg%3E" />
+</head>
+<body>
+
+<nav class="nav">
+  <div class="container nav-inner">
+    <a class="brand silent" href="./">
+      <span class="brand-logo">F</span><span>Flyo</span>
+    </a>
+    <div class="nav-links">
+      <a class="nav-link active" href="install.html">Install</a>
+      <a class="nav-link" href="config.html">Config</a>
+      <a class="nav-link" href="api.html">API</a>
+      <a class="nav-link" href="https://github.com/webd90kb/webd" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container doc-shell">
+  <aside class="doc-side">
+    <h5>Install guide</h5>
+    <a href="#download">Download</a>
+    <a href="#windows">Windows</a>
+    <a href="#linux">Linux</a>
+    <a href="#macos">macOS</a>
+    <a href="#openwrt">OpenWrt</a>
+    <a href="#android">Android</a>
+    <a href="#run">First run</a>
+    <a href="#autostart">Auto-start</a>
+  </aside>
+
+  <main class="doc-body">
+    <h1>Install Flyo</h1>
+    <p>Flyo is a single binary. The whole install process is "download, extract, run".</p>
+
+    <h2 id="download">Download</h2>
+    <p>Grab the latest release for your platform from the
+      <a href="https://github.com/webd90kb/webd/releases" target="_blank" rel="noopener">releases page</a>.
+      File names follow this convention:</p>
+    <pre>flyo-&lt;version&gt;-&lt;target&gt;.&lt;ext&gt;
+
+# examples
+flyo-0.1-x86_64-pc-windows-msvc.zip
+flyo-0.1-x86_64-unknown-linux-musl.tar.gz
+flyo-0.1-aarch64-unknown-linux-musl.tar.gz
+flyo-0.1-aarch64-apple-darwin.tar.gz
+flyo-0.1-mipsel-unknown-linux-musl.tar.gz   # OpenWrt</pre>
+
+    <h2 id="windows">Windows (10 / 11)</h2>
+    <ol>
+      <li>Download <code>flyo-0.1-x86_64-pc-windows-msvc.zip</code>.</li>
+      <li>Right-click → <em>Extract All</em> to a folder, e.g. <code>D:\flyo\</code>.</li>
+      <li>Open the folder, edit <code>webd.conf</code> in Notepad — set <code>Webd.Root</code> to the path you want to share and pick at least one <code>Webd.User</code>.</li>
+      <li>Double-click <code>flyo.exe</code> to launch. A console window opens; closing it stops the server.</li>
+      <li>Open <code>http://127.0.0.1:9212</code> in your browser.</li>
+    </ol>
+
+    <h2 id="linux">Linux (x86_64 / ARM64)</h2>
+    <pre>tar xzf flyo-0.1-x86_64-unknown-linux-musl.tar.gz
+sudo mv flyo /usr/local/bin/
+
+# Create a working directory with a config
+mkdir -p ~/flyo &amp;&amp; cd ~/flyo
+cat &gt; webd.conf &lt;&lt;EOF
+Webd.Root   /mnt/data
+Webd.Listen 9212
+Webd.User   rlumS admin secret
+Webd.Guest  rl
+EOF
+
+# Run
+flyo</pre>
+    <p>For ARM64 boards (Raspberry Pi 4, Orange Pi 5, Apple servers etc.) use the <code>aarch64-unknown-linux-musl</code> build instead.</p>
+
+    <h2 id="macos">macOS (Apple Silicon)</h2>
+    <pre>tar xzf flyo-0.1-aarch64-apple-darwin.tar.gz
+sudo mv flyo /usr/local/bin/
+
+# First launch — Gatekeeper will quarantine the binary
+xattr -d com.apple.quarantine /usr/local/bin/flyo
+
+flyo -w ~/Downloads -u rlumS:admin:secret</pre>
+
+    <h2 id="openwrt">OpenWrt (mipsel / ARM routers)</h2>
+    <ol>
+      <li>SSH into your router. Check architecture: <code>cat /etc/openwrt_release</code>.</li>
+      <li>Grab the matching tarball (look for <code>mipsel</code>, <code>mips</code>, or <code>aarch64</code> with <code>musl</code>).</li>
+      <li><code>scp</code> the binary onto the router, then:</li>
+    </ol>
+    <pre>chmod +x /usr/bin/flyo
+
+# Persist start command
+cat &gt; /etc/init.d/flyo &lt;&lt;'EOF'
+#!/bin/sh /etc/rc.common
+START=99
+start() { /usr/bin/flyo -w /mnt/sda1 -u rlumS:admin:secret &amp; }
+stop()  { killall flyo; }
+EOF
+chmod +x /etc/init.d/flyo
+/etc/init.d/flyo enable
+/etc/init.d/flyo start</pre>
+
+    <h2 id="android">Android (via adb)</h2>
+    <p>Useful for turning a spare phone into a tiny file server on your home network.</p>
+    <pre>adb push flyo /data/local/tmp/
+adb shell
+cd /data/local/tmp &amp;&amp; chmod 755 flyo
+mkdir -p /sdcard/.Trash
+nohup ./flyo -w /sdcard -u rlumS:admin:secret &gt;/dev/null 2&gt;&amp;1 &amp;
+ifconfig   # note the wifi IP</pre>
+
+    <h2 id="run">First run</h2>
+    <p>Out of the box, with no config file, Flyo serves the current working directory on <code>0.0.0.0:9212</code> with guest read-only access. Any of these will work:</p>
+    <pre>flyo                                        # use ./webd.conf or defaults
+flyo -w /path/to/share                      # CLI override of share root
+flyo -w /mnt/data -u rlumS:admin:secret     # ad-hoc admin user</pre>
+    <p>Then point a browser at <code>http://your-host:9212</code>.</p>
+
+    <h2 id="autostart">Auto-start</h2>
+    <p>Flyo doesn't bring its own service manager — use whatever your OS already has.</p>
+
+    <h3>systemd (most Linux distros)</h3>
+    <pre>cat &gt; /etc/systemd/system/flyo.service &lt;&lt;EOF
+[Unit]
+Description=Flyo file server
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/flyo
+WorkingDirectory=/etc/flyo
+Restart=on-failure
+User=flyo
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable --now flyo</pre>
+
+    <h3>Windows — Task Scheduler</h3>
+    <ol>
+      <li>Open <em>Task Scheduler</em> → <em>Create Basic Task</em>.</li>
+      <li>Trigger: <em>When the computer starts</em>.</li>
+      <li>Action: <em>Start a program</em> → <code>C:\flyo\flyo.exe</code>, <em>Start in</em>: <code>C:\flyo</code>.</li>
+      <li>Check <em>Run whether user is logged on or not</em>.</li>
+    </ol>
+
+    <h2>Next: configure permissions</h2>
+    <p>Move on to the <a href="config.html">configuration reference</a> to set up users, listen addresses, and per-user permissions.</p>
+  </main>
+</div>
+
+<footer class="footer">
+  <div class="container footer-row">
+    <span>© 2026 Flyo · MIT licensed</span>
+    <span>Successor to <a href="https://webd.cf/webd/" target="_blank" rel="noopener">webd</a></span>
+    <span class="spacer"></span>
+    <a href="https://github.com/webd90kb/webd" target="_blank" rel="noopener">GitHub</a>
+    <a href="config.html">Config</a>
+    <a href="api.html">API</a>
+  </div>
+</footer>
+
+</body>
+</html>

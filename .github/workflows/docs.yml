@@ -1,0 +1,53 @@
+# Publish flyo/docs/ to GitHub Pages whenever main is pushed.
+#
+# The docs site is pure-static HTML — no build step required. We just rsync
+# the docs folder into the Pages deployment artefact.
+
+name: Docs
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'flyo/docs/**'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Cancel a stale deploy if a newer one starts.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stage docs as Pages artefact
+        run: |
+          mkdir -p _site
+          cp -r flyo/docs/* _site/
+          # No SPA fallback needed — every linked page is a real file.
+          ls -lh _site
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

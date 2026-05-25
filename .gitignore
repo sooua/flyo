@@ -1,0 +1,44 @@
+# Rust build artefacts
+/target
+**/target
+
+# Node / pnpm
+**/node_modules
+**/dist
+**/.pnpm-store
+.pnpm-debug.log
+
+# TypeScript build cache
+**/*.tsbuildinfo
+
+# Editor / OS
+.DS_Store
+.vscode
+.idea
+*.swp
+*.swo
+Thumbs.db
+
+# Local config + secrets
+**/*.local
+**/.env
+**/.env.*
+
+# Local test scratch
+**/flyo-*.log
+**/flyo-tmp-*
+**/_site
+flyo-latest-win32.7z
+webd-latest-win32.7z
+webd-20240711-win32.7z
+webd_index.html
+webd_embedded.gz
+
+# Cached webd reference clone (kept on disk for our own reference only)
+/webd
+
+# Design tool exports (generated, can be regenerated)
+/design
+
+# Test scratch (transient)
+/flyo-shot

@@ -1,0 +1,217 @@
+# CI — runs on every push and pull-request.
+#
+# Three parallel tracks:
+#   1. Windows runner: full e2e + smoke suite (the test scripts are
+#      PowerShell-native and exercise the embedded icon / WebRequest stack).
+#   2. Linux runner: pure Rust unit tests + frontend build sanity (faster
+#      feedback for non-Windows-specific regressions).
+#   3. Cross-platform matrix build: produces a release binary for every
+#      supported target so we catch toolchain breakage early.
+#
+# Caching:
+#   - Cargo registry + target dir via Swatinem/rust-cache
+#   - pnpm content-addressable store via the official action
+
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  test-windows:
+    name: Full test suite · windows-latest
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: flyo/web/pnpm-lock.yaml
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          target: x86_64-pc-windows-msvc
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: windows-test
+
+      # Python is preinstalled on windows-latest but pin a known version so
+      # the concurrency test (Python script) behaves predictably.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Run full test suite (build → unit → e2e → smoke)
+        shell: pwsh
+        run: ./run_all_tests.ps1
+
+  test-linux:
+    name: Unit + build · ubuntu-latest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: flyo/web/pnpm-lock.yaml
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: clippy, rustfmt
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: linux-test
+
+      - name: Build frontend
+        run: |
+          pnpm --dir flyo/web install --frozen-lockfile
+          pnpm --dir flyo/web build
+
+      - name: cargo fmt --check
+        run: cargo fmt --all -- --check
+        continue-on-error: true # report but don't fail; existing style is acceptable
+
+      - name: cargo clippy
+        run: cargo clippy --workspace --release -- -D warnings
+        continue-on-error: true
+
+      - name: cargo test (workspace)
+        run: cargo test --workspace --release
+
+  cross-build:
+    name: Cross-build · ${{ matrix.target }}
+    needs: [test-linux]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            archive: zip
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            archive: tar.gz
+            use-cross: true
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-latest
+            archive: tar.gz
+            use-cross: true
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            archive: tar.gz
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            archive: tar.gz
+          # OpenWrt MIPS little-endian — cross supports this via Docker image.
+          # Allowed to fail in the matrix because Docker image availability
+          # changes upstream; we still cut binaries for it when possible.
+          - target: mipsel-unknown-linux-musl
+            os: ubuntu-latest
+            archive: tar.gz
+            use-cross: true
+            continue-on-error: true
+
+    continue-on-error: ${{ matrix.continue-on-error == true }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: flyo/web/pnpm-lock.yaml
+
+      - name: Build frontend (embedded into the Rust binary at compile time)
+        shell: bash
+        run: |
+          pnpm --dir flyo/web install --frozen-lockfile
+          pnpm --dir flyo/web build
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: build-${{ matrix.target }}
+
+      - name: Install cross (for non-native targets)
+        if: matrix.use-cross == true
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cross
+
+      - name: Build flyo + flyo-proxy
+        shell: bash
+        run: |
+          if [ "${{ matrix.use-cross }}" = "true" ]; then
+            cross build --release --target ${{ matrix.target }} --workspace
+          else
+            cargo build --release --target ${{ matrix.target }} --workspace
+          fi
+
+      - name: Package artefact
+        shell: bash
+        run: |
+          set -e
+          mkdir -p dist
+          stage="dist/flyo-${{ github.sha }}-${{ matrix.target }}"
+          mkdir -p "$stage"
+          bin_dir="target/${{ matrix.target }}/release"
+          if [ "${{ matrix.archive }}" = "zip" ]; then
+            cp "$bin_dir/flyo.exe"        "$stage/"
+            cp "$bin_dir/flyo-proxy.exe"  "$stage/"
+          else
+            cp "$bin_dir/flyo"        "$stage/"
+            cp "$bin_dir/flyo-proxy"  "$stage/"
+          fi
+          cp flyo/webd.conf "$stage/webd.conf.example" || true
+          cp flyo/README.md "$stage/" || true
+          cd dist
+          if [ "${{ matrix.archive }}" = "zip" ]; then
+            7z a -tzip "flyo-${{ matrix.target }}.zip" "$(basename $stage)" >/dev/null
+          else
+            tar czf "flyo-${{ matrix.target }}.tar.gz" "$(basename $stage)"
+          fi
+          ls -lh
+
+      - name: Upload artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: flyo-${{ matrix.target }}
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+          if-no-files-found: error
+          retention-days: 14

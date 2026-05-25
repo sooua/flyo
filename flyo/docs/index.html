@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#0b0e14" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+  <title>Flyo — a 2 MB self-hosted file server</title>
+  <meta name="description"
+    content="Flyo is a tiny, fast, self-hosted web file server. Single Rust binary, no dependencies, modern UI. A safe rewrite of webd." />
+  <meta property="og:title" content="Flyo — a 2 MB self-hosted file server" />
+  <meta property="og:description"
+    content="Drop the binary, share your folder. Modern UI, drag-drop uploads, Range streaming, per-user permissions." />
+  <meta property="og:type" content="website" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Cal+Sans&family=Inter:wght@400;500;600&display=swap" />
+  <link rel="stylesheet" href="docs.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='4' y='3' width='16' height='4' rx='1.5' fill='%23242424' fill-opacity='0.35'/%3E%3Crect x='2' y='8' width='20' height='5' rx='2' fill='%23242424' fill-opacity='0.6'/%3E%3Crect x='0' y='14' width='24' height='9' rx='2.5' fill='%23242424'/%3E%3C/svg%3E" />
+</head>
+<body>
+
+<nav class="nav">
+  <div class="container nav-inner">
+    <a class="brand silent" href="./">
+      <span class="brand-logo">F</span>
+      <span>Flyo</span>
+    </a>
+    <div class="nav-links">
+      <a class="nav-link" href="install.html">Install</a>
+      <a class="nav-link" href="config.html">Config</a>
+      <a class="nav-link" href="api.html">API</a>
+      <a class="nav-link" href="https://github.com/webd90kb/webd" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="container">
+    <div class="eyebrow"><span class="dot"></span>v0.1 · single 2 MB binary</div>
+    <h1>The file server you actually want to host yourself.</h1>
+    <p class="lead">
+      Flyo is a tiny self-hosted file sharing server written in Rust.
+      Drop one binary on any box — Windows, Linux, ARM NAS, OpenWrt router —
+      and a folder is on the web with a modern UI in seconds.
+    </p>
+    <div class="cta">
+      <a class="btn primary" href="install.html">
+        <span aria-hidden="true">↓</span> Download &amp; install
+      </a>
+      <a class="btn outline" href="#how">See it work</a>
+    </div>
+
+    <div class="terminal" id="how">
+      <div class="terminal-bar">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="title">~/sharedata $ flyo</span>
+      </div>
+<pre><span class="cmt"># A complete file server in 3 lines.</span>
+<span class="prompt">$</span> <span class="acc">./flyo -w /mnt/media -u rlumS:admin:secret</span>
+<span class="ok">INFO</span>  loading config from webd.conf
+<span class="ok">INFO</span>  flyo listening on http://0.0.0.0:9212
+<span class="cmt"># Open http://your-ip:9212 — modern UI, dark mode, drag-drop, Range streaming.</span></pre>
+    </div>
+  </div>
+</header>
+
+<section class="trust">
+  <div class="container">
+    <h4>Runs natively on</h4>
+    <div class="trust-row">
+      <span>Windows 10+</span>
+      <span>Linux x64 / ARM64</span>
+      <span>macOS</span>
+      <span>OpenWrt</span>
+      <span>Armbian</span>
+      <span>Android (adb)</span>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <h2>Small enough for a router. Capable enough for a NAS.</h2>
+    <p class="lead">
+      Every feature you'd want from a self-hosted file UI, with none of the bloat.
+      No database, no Docker, no Electron.
+    </p>
+
+    <div class="feature-grid">
+      <div class="feature">
+        <div class="ic" aria-hidden="true">⬇</div>
+        <h3>2 MB single binary</h3>
+        <p>Drop and run. Zero dependencies, zero install steps, zero background services to manage.</p>
+      </div>
+      <div class="feature">
+        <div class="ic" aria-hidden="true">🛡</div>
+        <h3>Memory-safe Rust</h3>
+        <p>The HTTP stack is built on the same library Cloudflare and AWS use. No buffer overflows by design.</p>
+      </div>
+      <div class="feature">
+        <div class="ic" aria-hidden="true">🌓</div>
+        <h3>Modern, dark-mode UI</h3>
+        <p>A clean Cal-Sans-and-Inter interface that respects your system theme. Keyboard, mobile, screen-reader friendly.</p>
+      </div>
+      <div class="feature">
+        <div class="ic" aria-hidden="true">⇅</div>
+        <h3>Drag-and-drop uploads</h3>
+        <p>Drop files, folders, or pasted screenshots anywhere on the page. Atomic writes — no half-uploaded files visible.</p>
+      </div>
+      <div class="feature">
+        <div class="ic" aria-hidden="true">▶</div>
+        <h3>Range streaming</h3>
+        <p>Scrub videos directly from the browser. Resume large downloads. HTTP Range works out of the box.</p>
+      </div>
+      <div class="feature">
+        <div class="ic" aria-hidden="true">🔑</div>
+        <h3>Per-user permissions</h3>
+        <p>Seven independent tags — read, list, upload, modify, show-hidden, media-play, force-download. Up to 3 users plus guest.</p>
+      </div>
+      <div class="feature">
+        <div class="ic" aria-hidden="true">⚡</div>
+        <h3>HTTP/2 + gzip</h3>
+        <p>Multiplexed connections and compressed responses by default. Listings load instantly even over slow links.</p>
+      </div>
+      <div class="feature">
+        <div class="ic" aria-hidden="true">📝</div>
+        <h3>Drop-in webd config</h3>
+        <p>Already use webd? Point flyo at your existing <code>webd.conf</code> — same directives, same semantics. Zero migration.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" style="padding-top:0">
+  <div class="container">
+    <h2>How does it compare?</h2>
+    <p class="lead">Flyo is the modern successor to <a href="https://webd.cf/webd/" target="_blank">webd</a>. Same idea, safer foundation.</p>
+
+    <div class="compare">
+      <table>
+        <thead>
+          <tr><th>Metric</th><th>webd (C)</th><th>flyo (Rust)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="metric">Binary size</td>           <td class="win">88 KB</td>     <td class="dim">~2 MB</td></tr>
+          <tr><td class="metric">Source available</td>      <td class="dim">No</td>        <td class="win">MIT</td></tr>
+          <tr><td class="metric">Memory safety</td>         <td class="dim">Hand-rolled C</td><td class="win">Compiler-checked</td></tr>
+          <tr><td class="metric">HTTP/2</td>                <td class="dim">No</td>        <td class="win">Yes</td></tr>
+          <tr><td class="metric">UI</td>                    <td class="dim">2000s table layout</td><td class="win">Modern Cal-Sans</td></tr>
+          <tr><td class="metric">Dark mode</td>             <td class="dim">No</td>        <td class="win">Yes (auto + manual)</td></tr>
+          <tr><td class="metric">Config format</td>         <td class="metric">webd.conf</td><td class="metric">webd.conf compatible</td></tr>
+          <tr><td class="metric">Test coverage</td>         <td class="dim">None public</td><td class="win">69 tests (unit + e2e)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container" style="text-align:center">
+    <h2>Get started in three lines.</h2>
+    <p class="lead">Pick your platform. We have a tar/zip for every architecture worth supporting.</p>
+    <div class="cta" style="justify-content:center">
+      <a class="btn primary" href="install.html">Install Flyo</a>
+      <a class="btn outline" href="https://github.com/webd90kb/webd" target="_blank" rel="noopener">View on GitHub</a>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container footer-row">
+    <span>© 2026 Flyo · MIT licensed</span>
+    <span>Successor to <a href="https://webd.cf/webd/" target="_blank" rel="noopener">webd</a> by zhngq2312@gmail.com</span>
+    <span class="spacer"></span>
+    <a href="https://github.com/webd90kb/webd" target="_blank" rel="noopener">GitHub</a>
+    <a href="install.html">Install</a>
+    <a href="config.html">Config</a>
+    <a href="api.html">API</a>
+  </div>
+</footer>
+
+</body>
+</html>
