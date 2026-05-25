@@ -32,6 +32,9 @@ function Run-Suite($name, $command) {
 # ---- 1. Build first so everything has fresh artefacts ----
 Run-Suite "BUILD · frontend (pnpm)" {
     Push-Location "$root\flyo\web"
+    # Reinstall lockfile-exact deps; cheap if up-to-date, mandatory on a
+    # fresh CI checkout where node_modules doesn't exist yet.
+    pnpm install --frozen-lockfile 2>&1 | Select-Object -Last 3
     pnpm build 2>&1 | Select-Object -Last 4
     Pop-Location
 }
