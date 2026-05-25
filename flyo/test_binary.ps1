@@ -75,7 +75,7 @@ if (Test-Path $dist) {
 
 # ---- favicon ICO sanity ----
 Write-Host "[favicon ICO]" -ForegroundColor Cyan
-$ico = "C:\Users\sooua\Desktop\Flyn\flyo\assets\flyo.ico"
+$ico = Join-Path $PSScriptRoot "assets\flyo.ico"
 Assert "assets/flyo.ico exists"                (Test-Path $ico)
 if (Test-Path $ico) {
     $icoSize = (Get-Item $ico).Length

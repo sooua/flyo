@@ -127,16 +127,10 @@ jobs:
           - target: x86_64-apple-darwin
             os: macos-latest
             archive: tar.gz
-          # OpenWrt MIPS little-endian — cross supports this via Docker image.
-          # Allowed to fail in the matrix because Docker image availability
-          # changes upstream; we still cut binaries for it when possible.
-          - target: mipsel-unknown-linux-musl
-            os: ubuntu-latest
-            archive: tar.gz
-            use-cross: true
-            continue-on-error: true
-
-    continue-on-error: ${{ matrix.continue-on-error == true }}
+          # TODO: re-enable OpenWrt mipsel-unknown-linux-musl once we have a
+          # working cross config — the target is tier-3 in Rust, so
+          # `rustup target add` doesn't ship a precompiled libstd. Need
+          # `-Z build-std` (nightly) or cargo-zigbuild.
 
     steps:
       - uses: actions/checkout@v4

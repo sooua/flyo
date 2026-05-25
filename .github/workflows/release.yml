@@ -50,13 +50,7 @@ jobs:
           - target: x86_64-apple-darwin
             os: macos-latest
             archive: tar.gz
-          - target: mipsel-unknown-linux-musl
-            os: ubuntu-latest
-            archive: tar.gz
-            use-cross: true
-            continue-on-error: true
-
-    continue-on-error: ${{ matrix.continue-on-error == true }}
+          # TODO: re-enable mipsel target — see ci.yml for details.
 
     steps:
       - uses: actions/checkout@v4
